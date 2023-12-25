@@ -12,30 +12,6 @@ void removeSpaces(char *input) {
     input[j] = '\0';
 }
 
-// int calculate(int *numbers, char *operators, int length) {
-//     int result = numbers[0];
-//     for (int i = 1; i < length; i++) {
-//         switch (operators[i - 1]) {
-//             case '+':
-//                 result += numbers[i];
-//                 break;
-//             case '-':
-//                 result -= numbers[i];
-//                 break;
-//             case '*':
-//                 result *= numbers[i];
-//                 break;
-//             case '/':
-//                 result /= numbers[i];
-//                 break;
-//             default:
-//                 // Handle invalid operator
-//                 return 0;
-//         }
-//     }
-//     return result;
-// }
-
 int calculate(int *numbers, char *operators, int length) {
     // Handle multiplication and division first
     for (int i = 0; i < length; i++) {
