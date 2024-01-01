@@ -11,8 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-int count_nam = 0;
-
 void removeSpaces(char *input) {
     int i, j = 0;
     for (i = 0; input[i] != '\0'; i++) {
@@ -159,35 +157,10 @@ void splitInput(char *input, int *numbers, char *operators) {
     operators[opCount] = '\0';
 }
 
-void *handle_client(void *arg) {
-    int client_sockfd = *((int *)arg);
-    char input[100];
-    int numbers[50];
-    char operators[50];
-    int result;
-
-    printf("Handling client...%d\n",++count_nam);
-
-    // Receive data from the client
-    read(client_sockfd, input, sizeof(input));
-    input[strcspn(input, "\n")] = 0; // Removing the newline character
-    splitInput(input, numbers, operators);
-
-    // Calculate the result
-    result = calculate(numbers, operators, strlen(operators) + 1);
-
-    // Send the result back to the client
-    write(client_sockfd, &result, sizeof(result));
-
-    // Close the client connection
-    close(client_sockfd);
-    pthread_exit(NULL);
-}
 
 int main()
 {
 	int server_sockfd, client_sockfd;
-	// int server_sockfd;
 	int server_len, client_len;
 	struct sockaddr_in server_address;
 	struct sockaddr_in client_address;
@@ -206,39 +179,27 @@ int main()
 	
 	/* 5. Mở hàng đợi nhận kết nối - cho phép đặt hàng vào hàng đợi tối đa 5 kết nối */
 	listen( server_sockfd, 5 );
-
-	pthread_t thread_id;
-	int client_fds[5]; // Assuming handling up to 5 clients
-    int client_count = 0;
 	
 	/* 6. Lặp vĩnh viễn để chờ và xử lý kết nối của trình khách */
-	while (1) {
-        printf("server waiting...\n");
+	while ( 1 ) {
+		// char ch;
+		char input[100];
+		int numbers[50]; // Assuming maximum 50 numbers
+    	char operators[50]; // Assuming maximum 50 operators
+		int result = 10;
+		printf( "server waiting...\n" );
+		/* Chờ và chấp nhận kết nối */
+		client_sockfd = accept( server_sockfd, (struct sockaddr*)&client_address, &client_len );
+		/* Đọc dữ liệu do trình khách gửi đến */
+		read( client_sockfd, input, sizeof(input) );
+		input[strcspn(input, "\n")] = 0; // Removing the newline character
+		splitInput(input, numbers, operators);
 
-        // Accept incoming connections
-        client_sockfd = accept(server_sockfd, (struct sockaddr *)&client_address, &client_len);
-
-        if (client_sockfd < 0) {
-            perror("Error accepting connection");
-            continue;
-        }
-
-        if (client_count < 5) { // Limit to 5 clients
-            client_fds[client_count++] = client_sockfd;
-
-            // Create a new thread to handle the client
-            pthread_t thread_id;
-            pthread_create(&thread_id, NULL, handle_client, &client_fds[client_count - 1]);
-
-            // Detach the thread to allow it to terminate independently
-            pthread_detach(thread_id);
-        } else {
-            printf("Server full. Try again later.\n");
-            close(client_sockfd); // Close the connection if the server is full
-        }
-    }
-
-    // Close the server socket (if needed)
-    close(server_sockfd);
-    return 0;
+    	result = calculate(numbers, operators, strlen(operators) + 1);
+		// ch++;
+		/* Gửi trả dữ liệu về cho trình khách */
+		write( client_sockfd, &result,sizeof(result));
+		/* Đóng kết nối */
+		close( client_sockfd );
+	}
 }
