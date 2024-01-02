@@ -157,11 +157,39 @@ void splitInput(char *input, int *numbers, char *operators) {
     operators[opCount] = '\0';
 }
 
+void *handle_client(void *arg) {
+    char input[100];
+    int numbers[50];
+    char operators[50];
+    int result;
+    int clientSocket = *((int *)arg); // Tạo socket cho client đầu vào
+    free(arg);
+    while(1) 
+    {
+        // ssize_t bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0); // Đọc dữ liệu từ client
+        read( clientSocket, input, sizeof(input) );
+        input[strcspn(input, "\n")] = 0;
+
+        splitInput(input, numbers, operators);
+
+    	result = calculate(numbers, operators, strlen(operators) + 1);
+        printf("result:%d\n", result);
+        // send(clientSocket, buffer, strlen(buffer), 0); // Gửi kết quả tính toán đến client
+        write(clientSocket, &result, sizeof(result));
+
+        close(clientSocket);
+        pthread_exit(NULL);
+        break;
+    }  
+}
+
+
 
 int main()
 {
-	int server_sockfd, client_sockfd;
-	int server_len, client_len;
+	// int server_sockfd, client_sockfd;
+    int server_sockfd;
+    int server_len, client_len;
 	struct sockaddr_in server_address;
 	struct sockaddr_in client_address;
 	
@@ -178,28 +206,35 @@ int main()
 	bind( server_sockfd, (struct sockaddr *)&server_address, server_len );
 	
 	/* 5. Mở hàng đợi nhận kết nối - cho phép đặt hàng vào hàng đợi tối đa 5 kết nối */
-	listen( server_sockfd, 5 );
+	listen( server_sockfd, 5);
 	
 	/* 6. Lặp vĩnh viễn để chờ và xử lý kết nối của trình khách */
 	while ( 1 ) {
-		// char ch;
-		char input[100];
-		int numbers[50]; // Assuming maximum 50 numbers
-    	char operators[50]; // Assuming maximum 50 operators
-		int result = 10;
 		printf( "server waiting...\n" );
 		/* Chờ và chấp nhận kết nối */
-		client_sockfd = accept( server_sockfd, (struct sockaddr*)&client_address, &client_len );
-		/* Đọc dữ liệu do trình khách gửi đến */
-		read( client_sockfd, input, sizeof(input) );
-		input[strcspn(input, "\n")] = 0; // Removing the newline character
-		splitInput(input, numbers, operators);
 
-    	result = calculate(numbers, operators, strlen(operators) + 1);
-		// ch++;
-		/* Gửi trả dữ liệu về cho trình khách */
-		write( client_sockfd, &result,sizeof(result));
-		/* Đóng kết nối */
-		close( client_sockfd );
+        int *client_sockfd = malloc(1);
+        *client_sockfd = accept( server_sockfd, (struct sockaddr*)&client_address, &client_len );
+		
+        //Check
+        if (*client_sockfd < 0) {
+            printf("Error accepting connection");
+            perror("Error accepting connection");
+            exit(EXIT_FAILURE);
+        }
+        printf("Connection accepted from client %d\n", *client_sockfd);
+        pthread_t client_thread;
+
+        // Tạo thread để xử lý tín hiệu của client
+        if (pthread_create(&client_thread, NULL, handle_client, (void*) client_sockfd) < 0) {
+            perror("Error creating thread");
+            printf("Error creating thread");
+            return 1;
+        }
+        printf("Handler assigned\n");
+        printf("Waiting for new connection...\n");
 	}
+
+    close(server_sockfd);
+    return 0;
 }
